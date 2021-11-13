@@ -75,7 +75,7 @@ namespace MarxDev.Tasks.MultithreadingSql
             this.nmrcUpDwnThreadCounter.Size = new System.Drawing.Size(78, 20);
             this.nmrcUpDwnThreadCounter.TabIndex = 2;
             this.nmrcUpDwnThreadCounter.Value = new decimal(new int[] {
-            2,
+            3,
             0,
             0,
             0});
@@ -109,6 +109,7 @@ namespace MarxDev.Tasks.MultithreadingSql
             // 
             // sttsStrp
             // 
+            this.sttsStrp.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.sttsStrp.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.mainStatus});
             this.sttsStrp.Location = new System.Drawing.Point(0, 199);
