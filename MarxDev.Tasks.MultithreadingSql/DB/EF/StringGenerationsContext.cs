@@ -22,6 +22,7 @@ namespace MarxDev.Tasks.MultithreadingSql
             modelBuilder.Entity<StringGeneration>()
              .Property(a => a.Text)            
              .IsRequired();
+
         }
 
     }

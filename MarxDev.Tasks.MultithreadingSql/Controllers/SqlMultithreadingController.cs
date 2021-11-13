@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,6 +31,9 @@ namespace MarxDev.Tasks.MultithreadingSql
         /// Generuojamų įrašų kiekis
         /// </summary>
         public int EntriesQuantity { get; private set; }
+
+        public long GenerationElapsed { get;private set; } = 0;
+        public int GenerationCount { get;private set; } = 0;
 
         /// <summary>
         /// Pagrindinis konstruktorius
@@ -59,11 +63,12 @@ namespace MarxDev.Tasks.MultithreadingSql
         /// <param name="progress">Objektas skirtas progreso grąžinimui</param>
         /// <returns>Visus sugeneruotus įrašus</returns>
         public async Task<IList<StringGeneration>> AssignAndRunTasksAsync(IProgress<int> progress)
-
         {
             try
             {
-
+                //tiesiog įdomu kiek laiko užtruko :)
+                Stopwatch stopWatch;
+                stopWatch = Stopwatch.StartNew();
 
                 //sukuriam gijų stabdymo šaltinį
                 _cancellationTokenSource = new CancellationTokenSource();
@@ -109,10 +114,14 @@ namespace MarxDev.Tasks.MultithreadingSql
                     IList<StringGeneration> currentList = await tasks[i];
                     allEntries.AddRange(currentList);
                 }
-
-                return allEntries;
+                //Įrašom laiką ir kiek sugeneravom
+                GenerationElapsed = stopWatch.ElapsedMilliseconds;
+                stopWatch.Stop();
+                GenerationCount = allEntries.Count;
+                //parūšiuojam pagal generavimo tvarką maždauk
+                return allEntries.OrderBy(a=>a.GenerationNumber).ThenBy(a=>a.ThreadId).ToList();
             }
-            //Jeigu Exceptionas gijoje, reikia Disposinti
+            //Jeigu Exceptionas gijoje, reikia vis tiek Disposinti
             finally
             {
                 //Naikinam stabdymo šaltinį
@@ -151,6 +160,7 @@ namespace MarxDev.Tasks.MultithreadingSql
         {
             IList<StringGeneration> entriesInserted = new List<StringGeneration>();
             
+            //Transaction'u nedariau, nutariau neišsiplėsti dar labiau
             using (var dbContext = new StringGenerationsContext(contextOptions))
             {
                 //gaunam gijosID
@@ -166,14 +176,13 @@ namespace MarxDev.Tasks.MultithreadingSql
                         return Task.FromResult(entriesInserted);
                     }
 
-                    if (i == 100)
-                    {
-                        throw new Exception("GGGG");
-                    }
-
-                    //
-                    var currentEntrie = _dbFabrik.InsertStringGeneration(dbContext, GenerateEntrie(threadId));
+                    //Saugojam įrašą, gaunam išsaugotą su ID
+                    var currentEntrie = _dbFabrik.InsertStringGeneration(dbContext, GenerateEntrie(threadId,i));
+                   
+                    //įdedam į konteinerį
                     entriesInserted.Add(currentEntrie);
+                    
+                    //perduodam progressą
                     if (!(progress is null))
                     {
                         progress.Report(i);
@@ -181,7 +190,7 @@ namespace MarxDev.Tasks.MultithreadingSql
                 }
 
             }
-
+            //gražinam viską
             return Task.FromResult(entriesInserted);
         }
 
@@ -191,8 +200,8 @@ namespace MarxDev.Tasks.MultithreadingSql
         /// </summary>
         /// <param name="threadId">Gijos numeris</param>
         /// <returns>StringGeneration</returns>
-        private static StringGeneration GenerateEntrie(int threadId) =>
-             new StringGeneration { ThreadId = threadId, Text = GetRandomGeneratedString() };
+        private static StringGeneration GenerateEntrie(int threadId,int generationNr) =>
+             new StringGeneration { ThreadId = threadId, Text = GetRandomGeneratedString() ,GenerationNumber= generationNr };
 
 
         /// <summary>
